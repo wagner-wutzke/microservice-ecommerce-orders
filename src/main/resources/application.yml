@@ -1,0 +1,50 @@
+server:
+  port: ${APP_PORT:9100}
+
+spring:
+  application:
+    name: orders-service
+  datasource:
+    url: jdbc:h2:file:./data/orders-db
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate.ddl-auto: update
+    open-in-view: false
+    show-sql: false
+    defer-datasource-initialization: true
+
+  sql.init.mode: always
+  h2.console.enabled: ${H2_CONSOLE_ENABLED:true}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9094}
+
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:order-events-consumer.v1}
+      properties:
+        spring.json.trusted.packages: "net.wowdev.ecommerce.domain.events"
+
+    producer:
+      # Strict idempotence. NOTE: Kafka rejects `enable.idempotence=true` together
+      # with acks=1 (ConfigException at producer start) — the broker cannot
+      # deduplicate without full ISR acknowledgement. acks=all is therefore
+      # required; see README "Spec deviations".
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        delivery.timeout.ms: 30000
+        request.timeout.ms: 10000
+        linger.ms: 0
+
+app:
+  kafka:
+    order-events-topic: ${KAFKA_ORDER_CREATED_TOPIC:order-events-topic.v1}
+    groupId: ${KAFKA_CONSUMER_GROUP:order-events-consumer.v1}
+
+logging:
+  level:
+    net.wowdev.ecommerce.orders: DEBUG
+    org.hibernate.orm.jdbc.bind: INFO
