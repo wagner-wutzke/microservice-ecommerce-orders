@@ -1,18 +1,5 @@
 package net.wowdev.ecommerce.orders.controller;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import java.util.UUID;
 import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.orders.TestFixtures;
 import net.wowdev.ecommerce.orders.service.OrderNotFoundException;
@@ -20,16 +7,27 @@ import net.wowdev.ecommerce.orders.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.data.domain.PageImpl;
+
 import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderController.class)
 class OrderControllerTest {
-    @Autowired private MockMvc mockMvc;
-    @MockitoBean private OrderService service;
+    @Autowired
+    private MockMvc mockMvc;
+    @MockitoBean
+    private OrderService service;
 
     @Test
     void supportsCrudEndpoints() throws Exception {
@@ -43,12 +41,12 @@ class OrderControllerTest {
         mockMvc.perform(get("/api/v1/orders/{id}", order.getId())).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/orders")).andExpect(status().isOk());
         mockMvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"id\":\"" + order.getId() + "\",\"orderNumber\":\"ORD-1\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "/api/v1/orders/" + order.getId()));
+                                              .content("{\"id\":\"" + order.getId() + "\",\"orderNumber\":\"ORD-1\"}"))
+               .andExpect(status().isCreated())
+               .andExpect(header().string("Location", "/api/v1/orders/" + order.getId()));
         mockMvc.perform(put("/api/v1/orders/{id}", order.getId()).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"orderNumber\":\"ORD-1\"}"))
-                .andExpect(status().isOk());
+                                                                 .content("{\"orderNumber\":\"ORD-1\"}"))
+               .andExpect(status().isOk());
         mockMvc.perform(delete("/api/v1/orders/{id}", order.getId())).andExpect(status().isNoContent());
     }
 

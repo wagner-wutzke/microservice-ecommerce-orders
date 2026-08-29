@@ -1,13 +1,14 @@
 package net.wowdev.ecommerce.orders;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
-import java.util.List;
 import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
 import net.wowdev.ecommerce.domain.enums.OrderStatus;
 import net.wowdev.ecommerce.domain.mapper.OrderMapper;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 public final class TestFixtures {
     private TestFixtures() {

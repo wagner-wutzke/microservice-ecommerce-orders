@@ -1,12 +1,12 @@
 package net.wowdev.ecommerce.orders.mapper;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
 import net.wowdev.ecommerce.domain.mapper.OrderMapper;
 import net.wowdev.ecommerce.orders.TestFixtures;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class OrderMapperTest {
     @Test

@@ -1,15 +1,16 @@
 package net.wowdev.ecommerce.orders.messaging;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-
-import java.time.Instant;
-import java.util.UUID;
 import net.wowdev.ecommerce.domain.dto.PaymentDTO;
 import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
 import net.wowdev.ecommerce.domain.events.PaymentCreatedEvent;
 import org.junit.jupiter.api.Test;
 import org.springframework.kafka.core.KafkaTemplate;
+
+import java.time.Instant;
+import java.util.UUID;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 class OrderProducerTest {
 

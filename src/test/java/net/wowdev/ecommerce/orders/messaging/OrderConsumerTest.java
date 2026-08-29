@@ -1,10 +1,10 @@
 package net.wowdev.ecommerce.orders.messaging;
 
-import static org.mockito.Mockito.mock;
-
 import net.wowdev.ecommerce.domain.events.OrderCompletedEvent;
 import net.wowdev.ecommerce.domain.events.OrderFailedEvent;
 import org.junit.jupiter.api.Test;
+
+import static org.mockito.Mockito.mock;
 
 class OrderConsumerTest {
 

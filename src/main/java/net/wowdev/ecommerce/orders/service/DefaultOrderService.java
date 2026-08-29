@@ -1,9 +1,5 @@
 package net.wowdev.ecommerce.orders.service;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
 import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
@@ -16,6 +12,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class DefaultOrderService implements OrderService {
@@ -27,7 +27,7 @@ public class DefaultOrderService implements OrderService {
     @Transactional(readOnly = true)
     public OrderDTO findById(final UUID id) {
         return orderRepository.findById(id).map(OrderMapper::toDto)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found: " + id));
+                              .orElseThrow(() -> new OrderNotFoundException("Order not found: " + id));
     }
 
     @Override
@@ -39,7 +39,9 @@ public class DefaultOrderService implements OrderService {
     @Override
     @Transactional
     public OrderDTO create(final OrderDTO orderDTO) {
-        if(orderDTO.getId() == null) { orderDTO.setId(UUID.randomUUID()); }
+        if (orderDTO.getId() == null) {
+            orderDTO.setId(UUID.randomUUID());
+        }
         OrderEntity saved = orderRepository.save(OrderMapper.toEntity(orderDTO));
 
         OrderDTO savedOrderDTO = OrderMapper.toDto(saved);
@@ -57,7 +59,7 @@ public class DefaultOrderService implements OrderService {
     @Transactional
     public OrderDTO update(final UUID id, final OrderDTO order) {
         OrderEntity current = orderRepository.findById(id)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found: " + id));
+                                             .orElseThrow(() -> new OrderNotFoundException("Order not found: " + id));
         OrderDTO replacement = OrderMapper.toDto(current);
         replacement.setOrderNumber(order.getOrderNumber());
         replacement.setOrderStatus(order.getOrderStatus());
