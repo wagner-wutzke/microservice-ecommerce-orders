@@ -24,7 +24,7 @@ import java.util.Map;
 public class KafkaConfig {
 
     @Value("${spring.kafka.consumer.group-id}")
-    private String consumerGroupId;
+    private String consumerGroup;
 
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
@@ -42,28 +42,31 @@ public class KafkaConfig {
     private String requestTimeout;
 
     @Value("${spring.kafka.producer.properties.enable.idempotence:true}")
-    private boolean idempotency;
+    private boolean idempotence;
 
     @Value("${spring.kafka.producer.retries:3}")
     private Integer retries;
+
+    @Value("${spring.kafka.producer.properties.max.in.flight.requests.per.connection:5}")
+    private Integer maxRequestsInFlight;
 
     @Value("${spring.kafka.consumer.properties.spring.json.trusted.packages}")
     private String trustedPackages;
 
     @Bean
-    public KafkaTemplate<String, Object> orderKafkaTemplate(
+    public KafkaTemplate<String, Object> kafkaTemplate(
             final ProducerFactory<String, Object> factory) {
         return new KafkaTemplate<>(factory);
     }
 
     @Bean
-    public ProducerFactory<String, Object> orderProducerFactory() {
+    public ProducerFactory<String, Object> producerFactory() {
         final Map<String, Object> config = new HashMap<>();
 
         // Mandatory companion of enable.idempotence — Kafka refuses to start the producer
         // Exactly-once-per-partition semantics: the broker deduplicates retried batches
         // using the producer id + sequence number.
-        config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, idempotency);
+        config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, idempotence);
 
         // with acks=0 or acks=1 because it cannot deduplicate without full ISR ack.
         config.put(ProducerConfig.RETRIES_CONFIG, retries);
@@ -72,6 +75,7 @@ public class KafkaConfig {
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
         config.put(ProducerConfig.ACKS_CONFIG, acks);
+        config.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, maxRequestsInFlight);
         config.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, deliveryTimeout);
         config.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, requestTimeout);
         config.put(ProducerConfig.LINGER_MS_CONFIG, linger);
@@ -79,10 +83,10 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConsumerFactory<String, Object> orderConsumerFactory() {
+    public ConsumerFactory<String, Object> consumerFactory() {
         final Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
         props.put(JacksonJsonDeserializer.TRUSTED_PACKAGES, trustedPackages);
@@ -102,5 +106,4 @@ public class KafkaConfig {
                         new FixedBackOff(2000L, retries)));
         return factory;
     }
-
 }

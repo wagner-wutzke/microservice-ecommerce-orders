@@ -21,16 +21,14 @@ class OrderRepositoryTest {
         final var order = TestFixtures.orderEntity();
         jdbcTemplate.update("""
                 insert into orders (
-                    id, customer_id, status, shipping_address_id, billing_address_id,
+                    id, customer_id, order_status,
                     total_amount, shipping_amount, tax_amount, discount_amount, order_amount,
                     order_number, created_at, modified_at
-                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 order.getId(),
                 order.getCustomerId(),
-                order.getStatus().name(),
-                order.getShippingAddressId(),
-                order.getBillingAddressId(),
+                order.getOrderStatus().name(),
                 order.getTotalAmount(),
                 order.getShippingAmount(),
                 order.getTaxAmount(),
@@ -42,8 +40,8 @@ class OrderRepositoryTest {
 
         assertThat(repository.findById(order.getId()))
                 .get()
-                .extracting(OrderEntity::getOrderNumber, OrderEntity::getStatus)
-                .containsExactly(order.getOrderNumber(), order.getStatus());
+                .extracting(OrderEntity::getOrderNumber, OrderEntity::getOrderStatus)
+                .containsExactly(order.getOrderNumber(), order.getOrderStatus());
         assertThat(repository.findAll()).hasSize(1);
     }
 }

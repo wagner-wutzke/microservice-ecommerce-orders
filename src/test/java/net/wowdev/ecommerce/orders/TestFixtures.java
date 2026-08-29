@@ -18,15 +18,13 @@ public final class TestFixtures {
         order.setId(UUID.fromString("11111111-1111-1111-1111-111111111111"));
         order.setCustomerId(UUID.fromString("22222222-1111-1111-1111-222222222222"));
         order.setOrderNumber("ORD-1");
-        order.setStatus(OrderStatus.PENDING);
+        order.setOrderStatus(OrderStatus.PENDING);
         order.setTotalAmount(new BigDecimal("10.00"));
         order.setDiscountAmount(new BigDecimal("8.00"));
         order.setShippingAmount(new BigDecimal("1.00"));
         order.setOrderAmount(new BigDecimal("9.00"));
         order.setTaxAmount(new BigDecimal("1.00"));
-        order.setItems(List.of());
-        order.setBillingAddressId(UUID.randomUUID());
-        order.setShippingAddressId(UUID.randomUUID());
+        order.setOrderLines(List.of());
         order.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
         order.setModifiedAt(Instant.parse("2026-01-02T00:00:00Z"));
         return order;

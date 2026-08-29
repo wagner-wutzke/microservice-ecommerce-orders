@@ -19,10 +19,10 @@ spring:
   h2.console.enabled: ${H2_CONSOLE_ENABLED:true}
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9094}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
     consumer:
-      group-id: ${KAFKA_CONSUMER_GROUP:order-events-consumer.v1}
+      group-id: ${KAFKA_CONSUMER_GROUP:order-events-group.v1}
       properties:
         spring.json.trusted.packages: "net.wowdev.ecommerce.domain.events"
 
@@ -35,14 +35,16 @@ spring:
       retries: 3
       properties:
         enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
         delivery.timeout.ms: 30000
         request.timeout.ms: 10000
         linger.ms: 0
 
 app:
   kafka:
-    order-events-topic: ${KAFKA_ORDER_CREATED_TOPIC:order-events-topic.v1}
-    groupId: ${KAFKA_CONSUMER_GROUP:order-events-consumer.v1}
+    order-events-topic: ${KAFKA_ORDER_EVENTS_TOPIC:order-events-topic.v1}
+    payment-events-topic: ${KAFKA_PAYMENT_EVENTS_TOPIC:payment-events-topic.v1}
+    customer-events-topic: ${KAFKA_CUSTOMER_EVENTS_TOPIC:customer-events-topic.v1}
 
 logging:
   level:

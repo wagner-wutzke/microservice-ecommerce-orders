@@ -9,8 +9,8 @@ import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
 import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
 import net.wowdev.ecommerce.domain.mapper.OrderMapper;
+import net.wowdev.ecommerce.orders.messaging.OrderProducer;
 import net.wowdev.ecommerce.orders.repository.OrderRepository;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DefaultOrderService implements OrderService {
 
     private final OrderRepository orderRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final OrderProducer orderProducer;
 
     @Override
     @Transactional(readOnly = true)
@@ -42,12 +42,15 @@ public class DefaultOrderService implements OrderService {
         if(orderDTO.getId() == null) { orderDTO.setId(UUID.randomUUID()); }
         OrderEntity saved = orderRepository.save(OrderMapper.toEntity(orderDTO));
 
-        OrderDTO result = OrderMapper.toDto(saved);
-        eventPublisher.publishEvent(new OrderCreatedEvent(
-                orderDTO.getId(),
+        OrderDTO savedOrderDTO = OrderMapper.toDto(saved);
+
+        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(
+                UUID.randomUUID(),
+                "TX_" + savedOrderDTO.getId(),
                 orderDTO,
-                LocalDateTime.now().toInstant(ZoneOffset.UTC)));
-        return result;
+                LocalDateTime.now().toInstant(ZoneOffset.UTC));
+        orderProducer.publishOrderCreatedEvent(orderCreatedEvent);
+        return savedOrderDTO;
     }
 
     @Override
@@ -57,17 +60,21 @@ public class DefaultOrderService implements OrderService {
                 .orElseThrow(() -> new OrderNotFoundException("Order not found: " + id));
         OrderDTO replacement = OrderMapper.toDto(current);
         replacement.setOrderNumber(order.getOrderNumber());
-        replacement.setStatus(order.getStatus());
+        replacement.setOrderStatus(order.getOrderStatus());
         replacement.setTotalAmount(order.getTotalAmount());
         replacement.setShippingAmount(order.getShippingAmount());
         replacement.setShippingAmount(order.getShippingAmount());
         replacement.setOrderAmount(order.getOrderAmount());
         replacement.setTaxAmount(order.getTaxAmount());
         OrderDTO result = OrderMapper.toDto(orderRepository.save(OrderMapper.toEntity(replacement)));
-        eventPublisher.publishEvent(new OrderCreatedEvent(
-                result.getId(),
+
+        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(
+                UUID.randomUUID(),
+                "TX_" + result.getId(),
                 result,
-                LocalDateTime.now().toInstant(ZoneOffset.UTC)));
+                LocalDateTime.now().toInstant(ZoneOffset.UTC));
+
+        orderProducer.publishOrderCreatedEvent(orderCreatedEvent);
         return result;
     }
 

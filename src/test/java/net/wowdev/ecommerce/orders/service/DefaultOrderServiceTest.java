@@ -13,90 +13,126 @@ import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
 import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
 import net.wowdev.ecommerce.orders.TestFixtures;
+import net.wowdev.ecommerce.orders.messaging.OrderProducer;
 import net.wowdev.ecommerce.orders.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultOrderServiceTest {
-    @Mock private OrderRepository repository;
-    @Mock private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private OrderRepository orderRepository;
+
+    @Mock
+    private OrderProducer orderProducer;
+
     private DefaultOrderService service;
 
     @BeforeEach
     void setUp() {
-        service = new DefaultOrderService(repository, eventPublisher);
+        service = new DefaultOrderService(orderRepository, orderProducer);
     }
 
     @Test
-    void findsOrderAndMapsPage() {
+    void findsByIdAndFindsAll() {
         final OrderEntity entity = TestFixtures.orderEntity();
-        when(repository.findById(entity.getId())).thenReturn(Optional.of(entity));
-        when(repository.findAll(any(PageRequest.class))).thenReturn(new PageImpl<>(List.of(entity)));
+        when(orderRepository.findById(entity.getId())).thenReturn(Optional.of(entity));
+        when(orderRepository.findAll(any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(entity)));
 
         assertThat(service.findById(entity.getId()).getOrderNumber()).isEqualTo("ORD-1");
         assertThat(service.findAll(PageRequest.of(0, 10))).hasSize(1);
     }
 
     @Test
-    void throwsWhenOrderIsMissing() {
+    void throwsWhenFindingMissingOrder() {
         final UUID id = UUID.randomUUID();
-        when(repository.findById(id)).thenReturn(Optional.empty());
+        when(orderRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.findById(id)).isInstanceOf(OrderNotFoundException.class);
-        assertThatThrownBy(() -> service.update(id, TestFixtures.orderDto())).isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> service.findById(id))
+                .isInstanceOf(OrderNotFoundException.class)
+                .hasMessage("Order not found: " + id);
     }
 
     @Test
-    void createsAndPublishesCreateEvent() {
-        final OrderEntity entity = TestFixtures.orderEntity();
+    void createsOrderWithExistingIdAndPublishesEvent() {
         final OrderDTO order = TestFixtures.orderDto();
-        when(repository.save(any(OrderEntity.class))).thenReturn(entity);
+        when(orderRepository.save(any(OrderEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         final OrderDTO result = service.create(order);
 
-        assertThat(result.getId()).isEqualTo(entity.getId());
+        assertThat(result).usingRecursiveComparison().isEqualTo(order);
         final ArgumentCaptor<OrderCreatedEvent> event = ArgumentCaptor.forClass(OrderCreatedEvent.class);
-        verify(eventPublisher).publishEvent(event.capture());
-        assertThat(event.getValue().orderDTO())
-                .usingRecursiveComparison()
-                .isEqualTo(order);
+        verify(orderProducer).publishOrderCreatedEvent(event.capture());
+        assertThat(event.getValue().orderDTO()).isSameAs(order);
+        assertThat(event.getValue().transactionId()).isEqualTo("TX_" + order.getId());
     }
 
     @Test
-    void updatesAndPublishesUpdateEvent() {
-        final OrderEntity entity = TestFixtures.orderEntity();
+    void createsOrderWithGeneratedId() {
+        final OrderDTO order = TestFixtures.orderDto();
+        order.setId(null);
+        when(orderRepository.save(any(OrderEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        final OrderDTO result = service.create(order);
+
+        assertThat(result.getId()).isNotNull();
+        assertThat(order.getId()).isEqualTo(result.getId());
+        verify(orderProducer).publishOrderCreatedEvent(any(OrderCreatedEvent.class));
+    }
+
+    @Test
+    void updatesOrderAndPublishesReplacement() {
+        final OrderEntity current = TestFixtures.orderEntity();
         final OrderDTO replacement = TestFixtures.orderDto();
         replacement.setOrderNumber("ORD-2");
-        when(repository.findById(entity.getId())).thenReturn(Optional.of(entity));
-        when(repository.save(any(OrderEntity.class))).thenReturn(entity);
+        when(orderRepository.findById(current.getId())).thenReturn(Optional.of(current));
+        when(orderRepository.save(any(OrderEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        final OrderDTO result = service.update(entity.getId(), replacement);
+        final OrderDTO result = service.update(current.getId(), replacement);
 
-        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(current.getId());
+        assertThat(result.getOrderNumber()).isEqualTo("ORD-2");
         final ArgumentCaptor<OrderCreatedEvent> event = ArgumentCaptor.forClass(OrderCreatedEvent.class);
-        verify(eventPublisher).publishEvent(event.capture());
-        assertThat(event.getValue().orderDTO().getId()).isEqualTo(result.getId());
-        assertThat(event.getValue().orderDTO())
-                .usingRecursiveComparison()
-                .isEqualTo(result);
+        verify(orderProducer).publishOrderCreatedEvent(event.capture());
+        assertThat(event.getValue().orderDTO()).usingRecursiveComparison().isEqualTo(result);
     }
 
     @Test
-    void deletesExistingOrderAndRejectsMissingOrder() {
+    void rejectsUpdateForMissingOrder() {
         final UUID id = UUID.randomUUID();
-        when(repository.existsById(id)).thenReturn(true);
-        service.delete(id);
-        verify(repository).deleteById(id);
+        when(orderRepository.findById(id)).thenReturn(Optional.empty());
 
-        when(repository.existsById(id)).thenReturn(false);
-        assertThatThrownBy(() -> service.delete(id)).isInstanceOf(OrderNotFoundException.class);
+        assertThatThrownBy(() -> service.update(id, TestFixtures.orderDto()))
+                .isInstanceOf(OrderNotFoundException.class);
+    }
+
+    @Test
+    void deletesExistingOrder() {
+        final UUID id = UUID.randomUUID();
+        when(orderRepository.existsById(id)).thenReturn(true);
+
+        service.delete(id);
+
+        verify(orderRepository).deleteById(id);
+    }
+
+    @Test
+    void rejectsDeleteForMissingOrder() {
+        final UUID id = UUID.randomUUID();
+        when(orderRepository.existsById(id)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.delete(id))
+                .isInstanceOf(OrderNotFoundException.class);
     }
 }
