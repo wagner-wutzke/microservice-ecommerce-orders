@@ -20,7 +20,7 @@ class OrderProducerTest {
         final OrderProcessingStartedEvent event = new OrderProcessingStartedEvent(
                 eventId, "TX-1", null, Instant.parse("2026-01-01T00:00:00Z"));
 
-        producer.publishOrderProcessingStartedEvent(event);
+        producer.publish(event);
 
         verify(template).send("orders.v1", eventId.toString(), event);
     }

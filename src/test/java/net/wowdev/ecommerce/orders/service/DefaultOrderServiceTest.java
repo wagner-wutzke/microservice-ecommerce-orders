@@ -72,7 +72,7 @@ class DefaultOrderServiceTest {
         assertThat(result).usingRecursiveComparison().isEqualTo(order);
         final ArgumentCaptor<OrderProcessingStartedEvent> event =
                 ArgumentCaptor.forClass(OrderProcessingStartedEvent.class);
-        verify(orderProducer).publishOrderProcessingStartedEvent(event.capture());
+        verify(orderProducer).publish(event.capture());
         assertThat(event.getValue().orderDTO()).isSameAs(order);
         assertThat(event.getValue().transactionId()).isEqualTo("TX_" + order.getId());
     }
@@ -88,7 +88,7 @@ class DefaultOrderServiceTest {
 
         assertThat(result.getId()).isNotNull();
         assertThat(order.getId()).isEqualTo(result.getId());
-        verify(orderProducer).publishOrderProcessingStartedEvent(any(OrderProcessingStartedEvent.class));
+        verify(orderProducer).publish(any(OrderProcessingStartedEvent.class));
     }
 
     @Test
@@ -105,7 +105,7 @@ class DefaultOrderServiceTest {
         assertThat(result.getId()).isEqualTo(current.getId());
         assertThat(result.getOrderNumber()).isEqualTo("ORD-2");
         verify(orderProducer, never())
-                .publishOrderProcessingStartedEvent(any(OrderProcessingStartedEvent.class));
+                .publish(any(OrderProcessingStartedEvent.class));
     }
 
     @Test

@@ -22,8 +22,8 @@ public class OrderProducer {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void publishOrderProcessingStartedEvent(final OrderProcessingStartedEvent event) {
-        log.info(">>>> Sending OrderCreationStartedEvent: {}", event);
+    public void publish(final OrderProcessingStartedEvent event) {
+        log.debug(">>>> Sending OrderProcessingStartedEvent: {}", event);
         template.send(ordersTopic, event.eventId().toString(), event);
     }
 }

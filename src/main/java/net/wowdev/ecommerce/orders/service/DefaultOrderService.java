@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -46,12 +47,14 @@ public class DefaultOrderService implements OrderService {
 
         OrderDTO savedOrderDTO = OrderMapper.toDto(saved);
 
-        OrderProcessingStartedEvent orderCreatedEvent = new OrderProcessingStartedEvent(
+        Instant now = LocalDateTime.now().toInstant(ZoneOffset.UTC);
+        OrderProcessingStartedEvent orderProcessingStartedEvent = new OrderProcessingStartedEvent(
                 UUID.randomUUID(),
                 "TX_" + savedOrderDTO.getId(),
                 orderDTO,
-                LocalDateTime.now().toInstant(ZoneOffset.UTC));
-        orderProducer.publishOrderProcessingStartedEvent(orderCreatedEvent);
+                now);
+        //TODO: persist event before publishing (outbox pattern)
+        orderProducer.publish(orderProcessingStartedEvent);
         return savedOrderDTO;
     }
 
