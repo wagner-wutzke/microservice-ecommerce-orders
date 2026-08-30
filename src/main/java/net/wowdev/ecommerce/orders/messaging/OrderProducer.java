@@ -1,8 +1,7 @@
 package net.wowdev.ecommerce.orders.messaging;
 
 import lombok.extern.slf4j.Slf4j;
-import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
-import net.wowdev.ecommerce.domain.events.PaymentCreatedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -23,14 +22,8 @@ public class OrderProducer {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void publishOrderCreatedEvent(final OrderCreatedEvent event) {
-        log.info(">>>> Sending OrderCreatedEvent: {}", event);
-        template.send(ordersTopic, event.eventId().toString(), event);
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void publishPaymentCreatedEvent(final PaymentCreatedEvent event) {
-        log.info(">>>> Sending PaymentCreatedEvent: {}", event);
+    public void publishOrderProcessingStartedEvent(final OrderProcessingStartedEvent event) {
+        log.info(">>>> Sending OrderCreationStartedEvent: {}", event);
         template.send(ordersTopic, event.eventId().toString(), event);
     }
 }

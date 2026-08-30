@@ -1,7 +1,8 @@
 package net.wowdev.ecommerce.orders.messaging;
 
-import net.wowdev.ecommerce.domain.events.OrderCompletedEvent;
-import net.wowdev.ecommerce.domain.events.OrderFailedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingCompletedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingFailedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.mock;
@@ -12,12 +13,17 @@ class OrderConsumerTest {
 
     @Test
     void handlesFailedOrders() {
-        consumer.handleOrderCancelled(mock(OrderFailedEvent.class));
+        consumer.handleOrderProcessingFailed(mock(OrderProcessingFailedEvent.class));
     }
 
     @Test
     void handlesCompletedOrders() {
-        consumer.handleOrderCompleted(mock(OrderCompletedEvent.class));
+        consumer.handleOrderProcessingCompleted(mock(OrderProcessingCompletedEvent.class));
+    }
+
+    @Test
+    void handlesStartedOrders() {
+        consumer.handleOrderProcessingStarted(mock(OrderProcessingStartedEvent.class));
     }
 
     @Test

@@ -2,7 +2,7 @@ package net.wowdev.ecommerce.orders.service;
 
 import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
-import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
 import net.wowdev.ecommerce.orders.TestFixtures;
 import net.wowdev.ecommerce.orders.messaging.OrderProducer;
 import net.wowdev.ecommerce.orders.repository.OrderRepository;
@@ -22,8 +22,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultOrderServiceTest {
@@ -71,8 +70,9 @@ class DefaultOrderServiceTest {
         final OrderDTO result = service.create(order);
 
         assertThat(result).usingRecursiveComparison().isEqualTo(order);
-        final ArgumentCaptor<OrderCreatedEvent> event = ArgumentCaptor.forClass(OrderCreatedEvent.class);
-        verify(orderProducer).publishOrderCreatedEvent(event.capture());
+        final ArgumentCaptor<OrderProcessingStartedEvent> event =
+                ArgumentCaptor.forClass(OrderProcessingStartedEvent.class);
+        verify(orderProducer).publishOrderProcessingStartedEvent(event.capture());
         assertThat(event.getValue().orderDTO()).isSameAs(order);
         assertThat(event.getValue().transactionId()).isEqualTo("TX_" + order.getId());
     }
@@ -88,11 +88,11 @@ class DefaultOrderServiceTest {
 
         assertThat(result.getId()).isNotNull();
         assertThat(order.getId()).isEqualTo(result.getId());
-        verify(orderProducer).publishOrderCreatedEvent(any(OrderCreatedEvent.class));
+        verify(orderProducer).publishOrderProcessingStartedEvent(any(OrderProcessingStartedEvent.class));
     }
 
     @Test
-    void updatesOrderAndPublishesReplacement() {
+    void updatesOrderWithoutPublishingReplacementEvent() {
         final OrderEntity current = TestFixtures.orderEntity();
         final OrderDTO replacement = TestFixtures.orderDto();
         replacement.setOrderNumber("ORD-2");
@@ -104,9 +104,8 @@ class DefaultOrderServiceTest {
 
         assertThat(result.getId()).isEqualTo(current.getId());
         assertThat(result.getOrderNumber()).isEqualTo("ORD-2");
-        final ArgumentCaptor<OrderCreatedEvent> event = ArgumentCaptor.forClass(OrderCreatedEvent.class);
-        verify(orderProducer).publishOrderCreatedEvent(event.capture());
-        assertThat(event.getValue().orderDTO()).usingRecursiveComparison().isEqualTo(result);
+        verify(orderProducer, never())
+                .publishOrderProcessingStartedEvent(any(OrderProcessingStartedEvent.class));
     }
 
     @Test

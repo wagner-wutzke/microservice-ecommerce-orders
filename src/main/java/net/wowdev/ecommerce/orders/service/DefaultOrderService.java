@@ -3,7 +3,7 @@ package net.wowdev.ecommerce.orders.service;
 import lombok.RequiredArgsConstructor;
 import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
-import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
 import net.wowdev.ecommerce.domain.mapper.OrderMapper;
 import net.wowdev.ecommerce.orders.messaging.OrderProducer;
 import net.wowdev.ecommerce.orders.repository.OrderRepository;
@@ -46,12 +46,12 @@ public class DefaultOrderService implements OrderService {
 
         OrderDTO savedOrderDTO = OrderMapper.toDto(saved);
 
-        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(
+        OrderProcessingStartedEvent orderCreatedEvent = new OrderProcessingStartedEvent(
                 UUID.randomUUID(),
                 "TX_" + savedOrderDTO.getId(),
                 orderDTO,
                 LocalDateTime.now().toInstant(ZoneOffset.UTC));
-        orderProducer.publishOrderCreatedEvent(orderCreatedEvent);
+        orderProducer.publishOrderProcessingStartedEvent(orderCreatedEvent);
         return savedOrderDTO;
     }
 
@@ -65,19 +65,11 @@ public class DefaultOrderService implements OrderService {
         replacement.setOrderStatus(order.getOrderStatus());
         replacement.setTotalAmount(order.getTotalAmount());
         replacement.setShippingAmount(order.getShippingAmount());
-        replacement.setShippingAmount(order.getShippingAmount());
+        replacement.setOrderLines(order.getOrderLines());
         replacement.setOrderAmount(order.getOrderAmount());
         replacement.setTaxAmount(order.getTaxAmount());
-        OrderDTO result = OrderMapper.toDto(orderRepository.save(OrderMapper.toEntity(replacement)));
-
-        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(
-                UUID.randomUUID(),
-                "TX_" + result.getId(),
-                result,
-                LocalDateTime.now().toInstant(ZoneOffset.UTC));
-
-        orderProducer.publishOrderCreatedEvent(orderCreatedEvent);
-        return result;
+        replacement.setDiscountAmount(order.getDiscountAmount());
+        return OrderMapper.toDto(orderRepository.save(OrderMapper.toEntity(replacement)));
     }
 
     @Override

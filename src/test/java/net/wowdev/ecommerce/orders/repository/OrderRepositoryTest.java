@@ -23,12 +23,13 @@ class OrderRepositoryTest {
         final var order = TestFixtures.orderEntity();
         jdbcTemplate.update("""
                                     insert into orders (
-                                        id, customer_id, order_status,
+                                        id, transaction_id, customer_id, order_status,
                                         total_amount, shipping_amount, tax_amount, discount_amount, order_amount,
                                         order_number, created_at, modified_at
-                                    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                     """,
                             order.getId(),
+                            order.getTransactionId(),
                             order.getCustomerId(),
                             order.getOrderStatus().name(),
                             order.getTotalAmount(),

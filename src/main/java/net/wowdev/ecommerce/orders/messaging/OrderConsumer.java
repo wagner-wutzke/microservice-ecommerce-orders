@@ -1,8 +1,9 @@
 package net.wowdev.ecommerce.orders.messaging;
 
 import lombok.extern.slf4j.Slf4j;
-import net.wowdev.ecommerce.domain.events.OrderCompletedEvent;
-import net.wowdev.ecommerce.domain.events.OrderFailedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingCompletedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingFailedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -17,18 +18,23 @@ import org.springframework.stereotype.Component;
 public class OrderConsumer {
 
     @KafkaHandler
-    public void handleOrderCancelled(OrderFailedEvent event) {
-        log.info(">>>> Processing FailedOrderEvent: {}", event);
+    public void handleOrderProcessingFailed(OrderProcessingFailedEvent event) {
+        log.info(">>>> Processing OrderProcessingFailedEvent: {}", event);
     }
 
     @KafkaHandler
-    public void handleOrderCompleted(OrderCompletedEvent event) {
-        log.info(">>>> Processing CompletedOrderEvent: {}", event);
+    public void handleOrderProcessingStarted(OrderProcessingStartedEvent event) {
+        log.info(">>>> Processing OrderProcessingStartedEvent: {}", event);
+    }
+
+    @KafkaHandler
+    public void handleOrderProcessingCompleted(OrderProcessingCompletedEvent event) {
+        log.info(">>>> Processing OrderProcessingCompletedEvent: {}", event);
     }
 
     @KafkaHandler(isDefault = true)
     public void handleUnknown(Object event) {
-        log.info(">>>> Received an unmapped event type: {}", event.getClass());
+        log.info(">>>> Received an unmapped event type {}: {}", event.getClass(), event);
     }
 
 
