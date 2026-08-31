@@ -2,48 +2,25 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns="http://maven.apache.org/POM/4.0.0"
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <description>Orders-service REST and Kafka microservice</description>
+  <groupId>net.wowdev.ecommerce</groupId>
+  <modelVersion>4.0.0</modelVersion>
+  <name>orders-service</name>
+
+  <parent>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <groupId>org.springframework.boot</groupId>
+    <relativePath/>
+    <version>4.1.0</version>
+  </parent>
+
+  <properties>
+    <jacoco.version>0.8.13</jacoco.version>
+    <java.version>21</java.version>
+  </properties>
+  <version>1.0.0</version>
   <artifactId>orders-service</artifactId>
-  <build>
-    <plugins>
-      <plugin>
-        <artifactId>jacoco-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>prepare-agent</goal>
-            </goals>
-          </execution>
-          <execution>
-            <configuration>
-              <excludes>
-                <exclude>net/wowdev/ecommerce/orders/OrdersServiceApplication.class</exclude>
-              </excludes>
-              <rules>
-                <rule>
-                  <element>BUNDLE</element>
-                  <limits>
-                    <limit>
-                      <counter>LINE</counter>
-                      <minimum>0.95</minimum>
-                      <value>COVEREDRATIO</value>
-                    </limit>
-                  </limits>
-                </rule>
-              </rules>
-            </configuration>
-            <goals>
-              <goal>check</goal>
-              <goal>report</goal>
-            </goals>
-            <id>verify-coverage</id>
-            <phase>verify</phase>
-          </execution>
-        </executions>
-        <groupId>org.jacoco</groupId>
-        <version>${jacoco.version}</version>
-      </plugin>
-    </plugins>
-  </build>
+
   <dependencies>
     <dependency>
       <artifactId>domain</artifactId>
@@ -97,19 +74,46 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  <description>Orders-service REST and Kafka microservice</description>
-  <groupId>net.wowdev.ecommerce</groupId>
-  <modelVersion>4.0.0</modelVersion>
-  <name>orders-service</name>
-  <parent>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <groupId>org.springframework.boot</groupId>
-    <relativePath/>
-    <version>4.1.0</version>
-  </parent>
-  <properties>
-    <jacoco.version>0.8.13</jacoco.version>
-    <java.version>21</java.version>
-  </properties>
-  <version>1.0.0</version>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <configuration>
+              <excludes>
+                <exclude>net/wowdev/ecommerce/orders/OrdersServiceApplication.class</exclude>
+              </excludes>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit>
+                      <counter>LINE</counter>
+                      <minimum>0.95</minimum>
+                      <value>COVEREDRATIO</value>
+                    </limit>
+                  </limits>
+                </rule>
+              </rules>
+            </configuration>
+            <goals>
+              <goal>check</goal>
+              <goal>report</goal>
+            </goals>
+            <id>verify-coverage</id>
+            <phase>verify</phase>
+          </execution>
+        </executions>
+        <groupId>org.jacoco</groupId>
+        <version>${jacoco.version}</version>
+      </plugin>
+    </plugins>
+  </build>
 </project>

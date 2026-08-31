@@ -51,12 +51,19 @@ public class DefaultOrderService implements OrderService {
   @Override
   @Transactional
   public OrderDTO create(final OrderDTO orderDTO) {
+    log.debug(">>>> Creating new order record {}", orderDTO);
     if (orderDTO.getId() == null) {
-      UUID newId = UUID.randomUUID();
-      orderDTO.setId(newId);
+      UUID orderId = UUID.randomUUID();
+      orderDTO.setId(orderId);
+      orderDTO.setReplicaId(orderId);
       orderDTO.setOrderStatus(OrderStatus.CREATED);
+      orderDTO.getOrderLines().forEach(orderLine -> {
+        UUID orderLineId = UUID.randomUUID();
+        orderLine.setOrderId(orderId);
+        orderLine.setId(orderLineId);
+        orderLine.setReplicaId(orderLineId);
+      });
     }
-
     calculateOrderAmounts(orderDTO);
 
     log.debug(">>>> Saving order {}", orderDTO);
@@ -75,7 +82,7 @@ public class DefaultOrderService implements OrderService {
     return savedOrderDTO;
   }
 
-  private void calculateOrderAmounts(OrderDTO orderDTO) {
+  protected void calculateOrderAmounts(OrderDTO orderDTO) {
     BigDecimal orderAmount =
         orderDTO.getOrderLines().stream()
             .map(line -> line.getPrice().multiply(BigDecimal.valueOf(line.getQuantity())))
