@@ -10,26 +10,23 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @KafkaListener(
-        groupId = "${spring.kafka.consumer.group-id}",
-        topics = "${app.kafka.order-events-topic}",
-        containerFactory = "kafkaListenerContainerFactory"
-)
+    groupId = "${spring.kafka.consumer.group-id}",
+    topics = "${app.kafka.order-events-topic}",
+    containerFactory = "kafkaListenerContainerFactory")
 public class OrderConsumer {
 
-    @KafkaHandler
-    public void handleOrderProcessingFailed(OrderProcessingFailedEvent event) {
-        log.info(">>>> Processing OrderProcessingFailedEvent: {}", event);
-    }
+  @KafkaHandler
+  public void handleOrderProcessingFailed(OrderProcessingFailedEvent event) {
+    log.debug(">>>> Processing OrderProcessingFailedEvent: {}", event);
+  }
 
-    @KafkaHandler
-    public void handleOrderProcessingCompleted(OrderProcessingCompletedEvent event) {
-        log.info(">>>> Processing OrderProcessingCompletedEvent: {}", event);
-    }
+  @KafkaHandler
+  public void handleOrderProcessingCompleted(OrderProcessingCompletedEvent event) {
+    log.debug(">>>> Processing OrderProcessingCompletedEvent: {}", event);
+  }
 
-    @KafkaHandler(isDefault = true)
-    public void handleUnknown(Object event) {
-        log.info(">>>> Received an unmapped event type {}: {}", event.getClass(), event);
-    }
-
-
+  @KafkaHandler(isDefault = true)
+  public void handleUnknown(Object event) {
+    log.debug(">>>> Received an unmapped event type {}: {}", event.getClass(), event);
+  }
 }

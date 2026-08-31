@@ -12,18 +12,19 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Slf4j
 public class OrderProducer {
 
-    private final KafkaTemplate<String, Object> template;
-    private final String ordersTopic;
+  private final KafkaTemplate<String, Object> template;
+  private final String ordersTopic;
 
-    public OrderProducer(final KafkaTemplate<String, Object> template,
-                         @Value("${app.kafka.order-events-topic}") final String ordersTopic) {
-        this.template = template;
-        this.ordersTopic = ordersTopic;
-    }
+  public OrderProducer(
+      final KafkaTemplate<String, Object> template,
+      @Value("${app.kafka.order-events-topic}") final String ordersTopic) {
+    this.template = template;
+    this.ordersTopic = ordersTopic;
+  }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void publish(final OrderProcessingStartedEvent event) {
-        log.debug(">>>> Sending OrderProcessingStartedEvent: {}", event);
-        template.send(ordersTopic, event.eventId().toString(), event);
-    }
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  public void publish(final OrderProcessingStartedEvent event) {
+    log.debug(">>>> Sending OrderProcessingStartedEvent: {}", event);
+    template.send(ordersTopic, event.eventId().toString(), event);
+  }
 }
