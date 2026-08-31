@@ -17,7 +17,7 @@ public final class TestFixtures {
     public static OrderDTO orderDto() {
         final OrderDTO order = new OrderDTO();
         order.setId(UUID.fromString("11111111-1111-1111-1111-111111111111"));
-        order.setTransactionId("transactionId");
+        order.setTransactionId("transaction-1");
         order.setCustomerId(UUID.fromString("22222222-1111-1111-1111-222222222222"));
         order.setOrderNumber("ORD-1");
         order.setOrderStatus(OrderStatus.PENDING);

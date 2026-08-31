@@ -50,3 +50,8 @@ logging:
   level:
     net.wowdev.ecommerce.orders: DEBUG
     org.hibernate.orm.jdbc.bind: INFO
+
+business:
+  config:
+    vat-rate: 0.15 # tax rate percent value
+    shipping-cost: 12.9 # TODO: to be provided by the shipping service

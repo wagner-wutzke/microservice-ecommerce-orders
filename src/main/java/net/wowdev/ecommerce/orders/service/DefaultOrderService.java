@@ -1,28 +1,38 @@
 package net.wowdev.ecommerce.orders.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
+import net.wowdev.ecommerce.domain.enums.OrderStatus;
 import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
 import net.wowdev.ecommerce.domain.mapper.OrderMapper;
 import net.wowdev.ecommerce.orders.messaging.OrderProducer;
 import net.wowdev.ecommerce.orders.repository.OrderRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DefaultOrderService implements OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderProducer orderProducer;
+
+    @Value("${business.config.vat-rate}")
+    private Double vatRate;
+
+    @Value("${business.config.shipping-cost}")
+    private Double shippingCost;
 
     @Override
     @Transactional(readOnly = true)
@@ -41,21 +51,42 @@ public class DefaultOrderService implements OrderService {
     @Transactional
     public OrderDTO create(final OrderDTO orderDTO) {
         if (orderDTO.getId() == null) {
-            orderDTO.setId(UUID.randomUUID());
+            UUID newId = UUID.randomUUID();
+            orderDTO.setId(newId);
+            orderDTO.setOrderStatus(OrderStatus.CREATED);
         }
-        OrderEntity saved = orderRepository.save(OrderMapper.toEntity(orderDTO));
 
-        OrderDTO savedOrderDTO = OrderMapper.toDto(saved);
+        calculateOrderAmounts(orderDTO);
 
-        Instant now = LocalDateTime.now().toInstant(ZoneOffset.UTC);
+        log.debug(">>>> Saving order {}", orderDTO);
+        OrderEntity savedOrderEntity = orderRepository.save(OrderMapper.toEntity(orderDTO));
+        log.debug(">>>> Saved order {}", savedOrderEntity);
+        OrderDTO savedOrderDTO = OrderMapper.toDto(savedOrderEntity);
+
         OrderProcessingStartedEvent orderProcessingStartedEvent = new OrderProcessingStartedEvent(
                 UUID.randomUUID(),
-                "TX_" + savedOrderDTO.getId(),
-                orderDTO,
-                now);
+                savedOrderDTO.getId().toString(),
+                savedOrderDTO,
+                LocalDateTime.now().toInstant(ZoneOffset.UTC));
         //TODO: persist event before publishing (outbox pattern)
         orderProducer.publish(orderProcessingStartedEvent);
         return savedOrderDTO;
+    }
+
+    private void calculateOrderAmounts(OrderDTO orderDTO) {
+        BigDecimal orderAmount = orderDTO.getOrderLines()
+                                         .stream()
+                                         .map(line -> line.getPrice().multiply(BigDecimal.valueOf(line.getQuantity())))
+                                         .reduce(BigDecimal.ZERO, BigDecimal::add);
+        orderDTO.setOrderAmount(orderAmount);
+        orderDTO.setShippingAmount(BigDecimal.valueOf(shippingCost));
+        orderDTO.setDiscountAmount(BigDecimal.ZERO); // TODO implement discount table
+        orderDTO.setTaxAmount(BigDecimal.valueOf(vatRate).multiply(orderAmount));
+        orderDTO.setTotalAmount(orderAmount
+                                        .add(orderDTO.getDiscountAmount())
+                                        .add(orderDTO.getTaxAmount())
+                                        .add(orderDTO.getShippingAmount())
+                                        .add(orderDTO.getDiscountAmount()));
     }
 
     @Override

@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +39,8 @@ class DefaultOrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new DefaultOrderService(orderRepository, orderProducer);
+        ReflectionTestUtils.setField(service, "vatRate", 0.15D);
+        ReflectionTestUtils.setField(service, "shippingCost", 12.90D);
     }
 
     @Test
@@ -73,8 +76,8 @@ class DefaultOrderServiceTest {
         final ArgumentCaptor<OrderProcessingStartedEvent> event =
                 ArgumentCaptor.forClass(OrderProcessingStartedEvent.class);
         verify(orderProducer).publish(event.capture());
-        assertThat(event.getValue().orderDTO()).isSameAs(order);
-        assertThat(event.getValue().transactionId()).isEqualTo("TX_" + order.getId());
+        assertThat(event.getValue().orderDTO()).usingRecursiveComparison().isEqualTo(order);
+        assertThat(event.getValue().transactionId()).isEqualTo(order.getId().toString());
     }
 
     @Test
