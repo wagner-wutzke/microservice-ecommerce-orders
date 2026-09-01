@@ -51,25 +51,25 @@ public class DefaultOrderService implements OrderService {
   @Override
   @Transactional
   public OrderDTO create(final OrderDTO orderDTO) {
-    log.debug(">>>> Creating new order record {}", orderDTO);
+    log.debug(">>>> Creating new Order record...");
     if (orderDTO.getId() == null) {
-      UUID orderId = UUID.randomUUID();
+      final UUID orderId = UUID.randomUUID();
       orderDTO.setId(orderId);
-      orderDTO.setReplicaId(orderId);
       orderDTO.setOrderStatus(OrderStatus.CREATED);
-      orderDTO.getOrderLines().forEach(orderLine -> {
-        UUID orderLineId = UUID.randomUUID();
-        orderLine.setOrderId(orderId);
-        orderLine.setId(orderLineId);
-        orderLine.setReplicaId(orderLineId);
-      });
+      orderDTO
+          .getOrderLines()
+          .forEach(
+              orderLine -> {
+                UUID orderLineId = UUID.randomUUID();
+                orderLine.setOrderId(orderId);
+                orderLine.setId(orderLineId);
+              });
     }
     calculateOrderAmounts(orderDTO);
 
-    log.debug(">>>> Saving order {}", orderDTO);
-    OrderEntity savedOrderEntity = orderRepository.save(OrderMapper.toEntity(orderDTO));
-    log.debug(">>>> Saved order {}", savedOrderEntity);
-    OrderDTO savedOrderDTO = OrderMapper.toDto(savedOrderEntity);
+    final OrderEntity savedOrderEntity = orderRepository.save(OrderMapper.toEntity(orderDTO));
+    log.debug(">>>> Created new Order {}", savedOrderEntity);
+    final OrderDTO savedOrderDTO = OrderMapper.toDto(savedOrderEntity);
 
     OrderProcessingStartedEvent orderProcessingStartedEvent =
         new OrderProcessingStartedEvent(

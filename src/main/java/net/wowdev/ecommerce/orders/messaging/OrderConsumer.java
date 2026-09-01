@@ -17,16 +17,16 @@ public class OrderConsumer {
 
   @KafkaHandler
   public void handleOrderProcessingFailed(OrderProcessingFailedEvent event) {
-    log.debug(">>>> Processing OrderProcessingFailedEvent: {}", event);
+    log.debug(">>>> Processing OrderProcessingFailedEvent...");
   }
 
   @KafkaHandler
   public void handleOrderProcessingCompleted(OrderProcessingCompletedEvent event) {
-    log.debug(">>>> Processing OrderProcessingCompletedEvent: {}", event);
+    log.debug(">>>> Processing OrderProcessingCompletedEvent...");
   }
 
   @KafkaHandler(isDefault = true)
   public void handleUnknown(Object event) {
-    log.debug(">>>> Received an unmapped event type {}: {}", event.getClass(), event);
+    log.debug(">>>> Received an unmapped event of type {}", event.getClass().getSimpleName());
   }
 }
