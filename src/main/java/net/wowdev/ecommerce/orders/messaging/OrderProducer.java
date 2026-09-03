@@ -19,14 +19,14 @@ public class OrderProducer {
 
   public OrderProducer(
       final KafkaTemplate<String, Object> template,
-      @Value("${app.kafka.order-events-topic}") final String ordersTopic) {
+      @Value("${app.kafka.orders-topic}") final String ordersTopic) {
     this.template = template;
     this.ordersTopic = ordersTopic;
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void publish(final @NonNull OrderCreatedEvent event) {
-    log.debug(">>>> Sending OrderCreatedEvent {}", event.eventId());
+    log.debug(">>>> Sending OrderCreatedEvent: {}", event.eventId());
     template.send(ordersTopic, event.eventId().toString(), event);
   }
 }

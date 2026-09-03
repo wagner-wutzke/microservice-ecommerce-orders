@@ -11,18 +11,18 @@ import org.springframework.stereotype.Component;
 @Component
 @KafkaListener(
     groupId = "${spring.kafka.consumer.group-id}",
-    topics = "${app.kafka.order-events-topic}",
+    topics = "${app.kafka.orders-topic}",
     containerFactory = "kafkaListenerContainerFactory")
 public class OrderConsumer {
 
   @KafkaHandler
   public void handleOrderProcessingFailed(OrderProcessingFailedEvent event) {
-    log.debug(">>>> Processing OrderProcessingFailedEvent...");
+    log.debug(">>>> Processing OrderProcessingFailedEvent: {}", event);
   }
 
   @KafkaHandler
   public void handleOrderProcessingCompleted(OrderProcessingCompletedEvent event) {
-    log.debug(">>>> Processing OrderProcessingCompletedEvent...");
+    log.debug(">>>> Processing OrderProcessingCompletedEvent: {}", event);
   }
 
   @KafkaHandler(isDefault = true)
