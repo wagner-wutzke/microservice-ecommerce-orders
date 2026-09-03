@@ -1,15 +1,14 @@
 package net.wowdev.ecommerce.orders.service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
 import net.wowdev.ecommerce.domain.enums.OrderStatus;
-import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
+import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
 import net.wowdev.ecommerce.domain.mapper.OrderMapper;
 import net.wowdev.ecommerce.orders.messaging.OrderProducer;
 import net.wowdev.ecommerce.orders.repository.OrderRepository;
@@ -68,17 +67,18 @@ public class DefaultOrderService implements OrderService {
     calculateOrderAmounts(orderDTO);
 
     final OrderEntity savedOrderEntity = orderRepository.save(OrderMapper.toEntity(orderDTO));
-    log.debug(">>>> Created new Order {}", savedOrderEntity);
+    log.debug(">>>> Created new Order \n\n{}\n", savedOrderEntity);
     final OrderDTO savedOrderDTO = OrderMapper.toDto(savedOrderEntity);
 
-    OrderProcessingStartedEvent orderProcessingStartedEvent =
-        new OrderProcessingStartedEvent(
+    OrderCreatedEvent orderCreatedEvent =
+        new OrderCreatedEvent(
             UUID.randomUUID(),
             savedOrderDTO.getId().toString(),
             savedOrderDTO,
-            LocalDateTime.now().toInstant(ZoneOffset.UTC));
+            Instant.now(),
+            OrderProducer.ORIGIN_SERVICE);
     // TODO: persist event before publishing (outbox pattern)
-    orderProducer.publish(orderProcessingStartedEvent);
+    orderProducer.publish(orderCreatedEvent);
     return savedOrderDTO;
   }
 

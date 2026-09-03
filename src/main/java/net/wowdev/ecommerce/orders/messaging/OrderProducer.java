@@ -1,7 +1,8 @@
 package net.wowdev.ecommerce.orders.messaging;
 
 import lombok.extern.slf4j.Slf4j;
-import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
+import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Slf4j
 public class OrderProducer {
 
+  public static final String ORIGIN_SERVICE = "ORDERS-SERVICE";
   private final KafkaTemplate<String, Object> template;
   private final String ordersTopic;
 
@@ -23,8 +25,8 @@ public class OrderProducer {
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void publish(final OrderProcessingStartedEvent event) {
-    log.debug(">>>> Sending OrderProcessingStartedEvent {}", event.eventId());
+  public void publish(final @NonNull OrderCreatedEvent event) {
+    log.debug(">>>> Sending OrderCreatedEvent {}", event.eventId());
     template.send(ordersTopic, event.eventId().toString(), event);
   }
 }

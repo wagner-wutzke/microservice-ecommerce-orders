@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.UUID;
 import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
-import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
+import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
 import net.wowdev.ecommerce.orders.TestFixtures;
 import net.wowdev.ecommerce.orders.messaging.OrderProducer;
 import net.wowdev.ecommerce.orders.repository.OrderRepository;
@@ -70,8 +70,8 @@ class DefaultOrderServiceTest {
     final OrderDTO result = service.create(order);
 
     assertThat(result).usingRecursiveComparison().isEqualTo(order);
-    final ArgumentCaptor<OrderProcessingStartedEvent> event =
-        ArgumentCaptor.forClass(OrderProcessingStartedEvent.class);
+    final ArgumentCaptor<OrderCreatedEvent> event =
+        ArgumentCaptor.forClass(OrderCreatedEvent.class);
     verify(orderProducer).publish(event.capture());
     assertThat(event.getValue().orderDTO()).usingRecursiveComparison().isEqualTo(order);
     assertThat(event.getValue().transactionId()).isEqualTo(order.getId().toString());
@@ -88,7 +88,7 @@ class DefaultOrderServiceTest {
 
     assertThat(result.getId()).isNotNull();
     assertThat(order.getId()).isEqualTo(result.getId());
-    verify(orderProducer).publish(any(OrderProcessingStartedEvent.class));
+    verify(orderProducer).publish(any(OrderCreatedEvent.class));
   }
 
   @Test
@@ -104,7 +104,7 @@ class DefaultOrderServiceTest {
 
     assertThat(result.getId()).isEqualTo(current.getId());
     assertThat(result.getOrderNumber()).isEqualTo("ORD-2");
-    verify(orderProducer, never()).publish(any(OrderProcessingStartedEvent.class));
+    verify(orderProducer, never()).publish(any(OrderCreatedEvent.class));
   }
 
   @Test
