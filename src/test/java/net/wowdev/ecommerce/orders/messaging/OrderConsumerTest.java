@@ -4,11 +4,13 @@ import static org.mockito.Mockito.mock;
 
 import net.wowdev.ecommerce.domain.events.OrderProcessingCompletedEvent;
 import net.wowdev.ecommerce.domain.events.OrderProcessingFailedEvent;
+import net.wowdev.ecommerce.orders.service.OrderService;
 import org.junit.jupiter.api.Test;
 
 class OrderConsumerTest {
 
-  private final OrderConsumer consumer = new OrderConsumer();
+  private final OrderService orderService = mock(OrderService.class);
+  private final OrderConsumer consumer = new OrderConsumer(orderService);
 
   @Test
   void handlesFailedOrders() {

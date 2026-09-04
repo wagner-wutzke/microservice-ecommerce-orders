@@ -15,4 +15,6 @@ public interface OrderService {
   OrderDTO update(UUID id, OrderDTO order);
 
   void delete(UUID id);
+
+  void cancel(final OrderDTO orderDTO, final String reason);
 }

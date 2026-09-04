@@ -9,6 +9,7 @@ import net.wowdev.ecommerce.domain.dto.OrderDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
 import net.wowdev.ecommerce.domain.enums.OrderStatus;
 import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
 import net.wowdev.ecommerce.domain.mapper.OrderMapper;
 import net.wowdev.ecommerce.orders.messaging.OrderProducer;
 import net.wowdev.ecommerce.orders.repository.OrderRepository;
@@ -22,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class DefaultOrderService implements OrderService {
+
+  private static final String ORIGIN_SERVICE = "ORDERS-SERVICE";
 
   private final OrderRepository orderRepository;
   private final OrderProducer orderProducer;
@@ -45,58 +48,6 @@ public class DefaultOrderService implements OrderService {
   @Transactional(readOnly = true)
   public Page<OrderDTO> findAll(final Pageable pageable) {
     return orderRepository.findAll(pageable).map(OrderMapper::toDto);
-  }
-
-  @Override
-  @Transactional
-  public OrderDTO create(final OrderDTO orderDTO) {
-    log.debug(">>>> Creating new Order record...");
-    if (orderDTO.getId() == null) {
-      final UUID orderId = UUID.randomUUID();
-      orderDTO.setId(orderId);
-      orderDTO.setOrderStatus(OrderStatus.CREATED);
-      orderDTO
-          .getOrderLines()
-          .forEach(
-              orderLine -> {
-                UUID orderLineId = UUID.randomUUID();
-                orderLine.setOrderId(orderId);
-                orderLine.setId(orderLineId);
-              });
-    }
-    calculateOrderAmounts(orderDTO);
-
-    final OrderEntity savedOrderEntity = orderRepository.save(OrderMapper.toEntity(orderDTO));
-    log.debug(">>>> Created new Order \n\n{}\n", savedOrderEntity);
-    final OrderDTO savedOrderDTO = OrderMapper.toDto(savedOrderEntity);
-
-    OrderCreatedEvent orderCreatedEvent =
-        new OrderCreatedEvent(
-            UUID.randomUUID(),
-            savedOrderDTO.getId().toString(),
-            savedOrderDTO,
-            Instant.now(),
-            OrderProducer.ORIGIN_SERVICE);
-    // TODO: persist event before publishing (outbox pattern)
-    orderProducer.publish(orderCreatedEvent);
-    return savedOrderDTO;
-  }
-
-  protected void calculateOrderAmounts(OrderDTO orderDTO) {
-    BigDecimal orderAmount =
-        orderDTO.getOrderLines().stream()
-            .map(line -> line.getPrice().multiply(BigDecimal.valueOf(line.getQuantity())))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-    orderDTO.setOrderAmount(orderAmount);
-    orderDTO.setShippingAmount(BigDecimal.valueOf(shippingCost));
-    orderDTO.setDiscountAmount(BigDecimal.ZERO); // TODO implement discount table
-    orderDTO.setTaxAmount(BigDecimal.valueOf(vatRate).multiply(orderAmount));
-    orderDTO.setTotalAmount(
-        orderAmount
-            .add(orderDTO.getDiscountAmount())
-            .add(orderDTO.getTaxAmount())
-            .add(orderDTO.getShippingAmount())
-            .add(orderDTO.getDiscountAmount()));
   }
 
   @Override
@@ -125,5 +76,80 @@ public class DefaultOrderService implements OrderService {
       throw new OrderNotFoundException("Order not found: " + id);
     }
     orderRepository.deleteById(id);
+  }
+
+  @Override
+  public void cancel(OrderDTO orderDTO, String reason) {
+    log.debug("Canceling order {} for the reason: {}", orderDTO.getId(), reason);
+    orderDTO.setOrderStatus(OrderStatus.CANCELLED);
+    orderRepository.save(OrderMapper.toEntity(orderDTO));
+  }
+
+  @Override
+  @Transactional
+  public OrderDTO create(final OrderDTO orderDTO) {
+    log.debug(">> Creating new Order record...");
+    if (orderDTO.getId() == null) {
+      final UUID orderId = UUID.randomUUID();
+      orderDTO.setId(orderId);
+      orderDTO.setOrderStatus(OrderStatus.CREATED);
+      orderDTO
+          .getOrderLines()
+          .forEach(
+              orderLine -> {
+                UUID orderLineId = UUID.randomUUID();
+                orderLine.setOrderId(orderId);
+                orderLine.setId(orderLineId);
+              });
+    }
+    calculateOrderAmounts(orderDTO);
+
+    final OrderEntity savedOrderEntity = orderRepository.save(OrderMapper.toEntity(orderDTO));
+    log.debug(">> Created new Order \n\n{}\n", savedOrderEntity);
+    final OrderDTO savedOrderDTO = OrderMapper.toDto(savedOrderEntity);
+
+    publishOrderCreated(savedOrderDTO);
+    publishOrderProcessingStarted(savedOrderDTO);
+    return savedOrderDTO;
+  }
+
+  protected void calculateOrderAmounts(OrderDTO orderDTO) {
+    BigDecimal orderAmount =
+        orderDTO.getOrderLines().stream()
+            .map(line -> line.getPrice().multiply(BigDecimal.valueOf(line.getQuantity())))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    orderDTO.setOrderAmount(orderAmount);
+    orderDTO.setShippingAmount(BigDecimal.valueOf(shippingCost));
+    orderDTO.setDiscountAmount(BigDecimal.ZERO); // TODO implement discount table
+    orderDTO.setTaxAmount(BigDecimal.valueOf(vatRate).multiply(orderAmount));
+    orderDTO.setTotalAmount(
+        orderAmount
+            .add(orderDTO.getDiscountAmount())
+            .add(orderDTO.getTaxAmount())
+            .add(orderDTO.getShippingAmount())
+            .add(orderDTO.getDiscountAmount()));
+  }
+
+  private void publishOrderCreated(OrderDTO savedOrderDTO) {
+    OrderCreatedEvent orderCreatedEvent =
+        new OrderCreatedEvent(
+            UUID.randomUUID(),
+            savedOrderDTO.getId().toString(),
+            savedOrderDTO,
+            Instant.now(),
+            OrderProducer.ORIGIN_SERVICE);
+    // TODO: persist event before publishing (outbox pattern)
+    orderProducer.publish(orderCreatedEvent);
+  }
+
+  protected void publishOrderProcessingStarted(OrderDTO orderDTO) {
+    OrderProcessingStartedEvent orderProcessingStartedEvent =
+        new OrderProcessingStartedEvent(
+            UUID.randomUUID(),
+            orderDTO.getId().toString(),
+            orderDTO,
+            Instant.now(),
+            ORIGIN_SERVICE);
+    orderProducer.publish(orderProcessingStartedEvent);
   }
 }
