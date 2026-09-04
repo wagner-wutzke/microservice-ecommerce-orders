@@ -24,13 +24,13 @@ public class OrderProducer {
     this.ordersTopic = ordersTopic;
   }
 
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION)
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void publish(final OrderCreatedEvent event) {
     log.debug(">> Publishing OrderCreatedEvent with event id: {}", event.eventId());
     template.send(ordersTopic, event.eventId().toString(), event);
   }
 
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION)
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void publish(OrderProcessingStartedEvent event) {
     log.debug(">> Publishing OrderProcessingStartedEvent: {}", event.eventId());
     template.send(ordersTopic, event.eventId().toString(), event);
