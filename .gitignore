@@ -46,3 +46,4 @@ build/
 /.idea/google-java-format.xml
 /.idea/workspace.xml
 /.idea/.name
+/data/orders-db.trace.db
