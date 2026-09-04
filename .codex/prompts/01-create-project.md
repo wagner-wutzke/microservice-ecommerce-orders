@@ -58,7 +58,7 @@ Maven project identification
 - artifactId: `${domain_object}s-service`
 - version: 1.0.0
 - name `${domain_object}s-service`
-- description: `${domain_object}s-service` REST and Kafka microservice.
+- description: `${domain_object}s-service` microservice.
 
 Preserve compatible dependencies and annotation-processor configuration already present. For a new
 project, include
@@ -95,25 +95,150 @@ update paths.
   `application.yml`. Never hardcode them in annotations or business logic.
 - Configure a Producer for the change events on domain objects, using the entity UUID as the stable
   key and
-  `enable.idempotence=true`, `acks=all`, and bounded retries `5`. Do not combine idempotence with
-  `acks=1`. It shall produce events on topic configured at
-  `app.kafka.${domain-object}-changes-topic` variable
+  `enable.idempotence=true`, `acks=all`, and bounded retries `3`. It shall produce events on topic
+  configured at
+  `app.kafka.${domain-object}s-topic` variable
   in `application.yml`.
 - Do not publish before the database commit. Prefer an application event handled by
   `@TransactionalEventListener(phase = AFTER_COMMIT)` or use an explicitly documented transactional
-  outbox. Explain
-  the reliability tradeoff; an asynchronous send failure is not a successful business operation.
-- Configure an explicit externalized consumer group, safe/idempotent processing, and a bounded
-  `DefaultErrorHandler`
-  with `DeadLetterPublishingRecoverer` or the version-compatible equivalent. Document the DLQ naming
-  convention.
+  outbox. Explain the reliability tradeoff; an asynchronous send failure is not a successful
+  business operation.
 - Configure a Consumer for receiving events on the configured
-  `app.kafka.${domain-object}-changes-topic`. Leave its
-  implementation open.
+  `app.kafka.${domain-object}s-topic`. Leave its
+  implementation open. ts class shall be annotated with `@Slf4j`, `@Component`,
+  `@RequiredArgsConstructor` and
+
+```java
+KafkaListener(
+    groupId ="${spring.kafka.consumer.group-id}",
+    topics = {
+},
+containerFactory ="kafkaListenerContainerFactory")
+```
+
+- The Consumer implementation must contain this method:
+
+```java
+
+@KafkaHandler(isDefault = true)
+public void handleUnknown(Object event) {
+  log.debug(">> Received an unmapped event of type {}", event.getClass().getSimpleName());
+}
+```
+
 - Add producer and consumer unit tests that do not require a live broker. Use embedded
   Kafka/Testcontainers only for an
   explicitly requested integration test.
 - Add the `@EnableKafka` to the `KafkaConfig` file in order to activate the consumers.
+- Use the following class as Sprig Configuration for Kafka:
+
+```java
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
+import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
+import org.springframework.util.backoff.FixedBackOff;
+
+@Configuration
+@EnableKafka
+public class KafkaConfig {
+
+  @Value("${spring.kafka.consumer.group-id}")
+  private String consumerGroup;
+
+  @Value("${spring.kafka.bootstrap-servers}")
+  private String bootstrapServers;
+
+  @Value("${spring.kafka.producer.acks:all}")
+  private String acks;
+
+  @Value("${spring.kafka.producer.properties.delivery.timeout.ms:30000}")
+  private String deliveryTimeout;
+
+  @Value("${spring.kafka.producer.properties.linger.ms:0}")
+  private String linger;
+
+  @Value("${spring.kafka.producer.properties.request.timeout.ms:10000}")
+  private String requestTimeout;
+
+  @Value("${spring.kafka.producer.properties.enable.idempotence:true}")
+  private boolean idempotence;
+
+  @Value("${spring.kafka.producer.retries:3}")
+  private Integer retries;
+
+  @Value("${spring.kafka.producer.properties.max.in.flight.requests.per.connection:5}")
+  private Integer maxRequestsInFlight;
+
+  @Value("${spring.kafka.consumer.properties.spring.json.trusted.packages}")
+  private String trustedPackages;
+
+  @Bean
+  public KafkaTemplate<String, Object> kafkaTemplate(
+      final ProducerFactory<String, Object> factory) {
+    return new KafkaTemplate<>(factory);
+  }
+
+  @Bean
+  public ProducerFactory<String, Object> producerFactory() {
+    final Map<String, Object> config = new HashMap<>();
+
+    // Mandatory companion of enable.idempotence — Kafka refuses to start the producer
+    // Exactly-once-per-partition semantics: the broker deduplicates retried batches
+    // using the producer id + sequence number.
+    config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, idempotence);
+    config.put(ProducerConfig.RETRIES_CONFIG, retries);
+    config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+    config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
+    config.put(ProducerConfig.ACKS_CONFIG, acks);
+    config.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, maxRequestsInFlight);
+    config.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, deliveryTimeout);
+    config.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, requestTimeout);
+    config.put(ProducerConfig.LINGER_MS_CONFIG, linger);
+    return new DefaultKafkaProducerFactory<>(config);
+  }
+
+  @Bean
+  public ConsumerFactory<String, Object> consumerFactory() {
+    final Map<String, Object> props = new HashMap<>();
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
+    props.put(JacksonJsonDeserializer.TRUSTED_PACKAGES, trustedPackages);
+    return new DefaultKafkaConsumerFactory<>(props);
+  }
+
+  @Bean
+  public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
+      final ConsumerFactory<String, Object> consumerFactory,
+      final KafkaTemplate<String, Object> kafkaTemplate) {
+    final var factory = new ConcurrentKafkaListenerContainerFactory<String, Object>();
+    factory.setConsumerFactory(consumerFactory);
+    factory.setConcurrency(3);
+    factory.getContainerProperties().setAckMode(AckMode.RECORD);
+    DefaultErrorHandler defaultErrorHandler =
+        new DefaultErrorHandler(
+            new DeadLetterPublishingRecoverer(kafkaTemplate), new FixedBackOff(2000L, retries));
+    factory.setCommonErrorHandler(defaultErrorHandler);
+    return factory;
+  }
+}
+```
 
 ## 5. H2 Database
 
@@ -125,17 +250,7 @@ override. Keep secrets out of source control.
 
 ## 6. Code formatting requirements
 
-- Follow the repository formatter when one is configured; otherwise use conventional Java
-  formatting.
-- Use four spaces for indentation, no tabs, and braces on the same line as declarations.
-- Keep lines at or below 120 characters where practical; break long annotations, generic types, and
-  method calls.
-- Use one import per line, remove unused imports, and keep imports organized by the project
-  formatter.
-- Add concise Javadoc only when public API behavior is non-obvious or required by the repository's
-  quality checks.
-- Keep Java readable: avoid one-line classes, methods, or multiple unrelated statements separated by
-  semicolons.
+- Follow the coding style from "Google Java Style" for the whole project.
 
 ## 7. Code style and safety
 
@@ -148,8 +263,7 @@ override. Keep secrets out of source control.
   changes into unrelated files.
 - Use Lombok logging only when Lombok is already enabled or explicitly selected.
 - Log useful non-sensitive context with parameterized messages; never log credentials, tokens, or
-  full sensitive
-  payloads.
+  full sensitive payloads.
 
 ## 8. Tests and acceptance checks
 
@@ -159,6 +273,12 @@ Prefer `@WebMvcTest` for MVC behavior, `@DataJpaTest` for repository behavior, a
 For Spring Boot 4,
 use the dedicated MVC test starter and current Spring test bean-override APIs when required by the
 project.
+
+- Add new unit test classes and in order to test every implemented production
+  class.
+- When suitable, implement unit tests for validating the business logic in the production classes.
+- When suitable, each production class should have its own test class.
+- The total test coverage is to be above 95% of code lines.
 
 Configure JaCoCo to enforce at least 95% line coverage during `verify`. Exclude only generated
 sources and a trivial

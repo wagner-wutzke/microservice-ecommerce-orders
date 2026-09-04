@@ -33,6 +33,6 @@ public class OrderProducer {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION)
   public void publish(OrderProcessingStartedEvent event) {
     log.debug(">> Publishing OrderProcessingStartedEvent: {}", event.eventId());
-    template.send(ordersTopic, event.transactionId(), event);
+    template.send(ordersTopic, event.eventId().toString(), event);
   }
 }

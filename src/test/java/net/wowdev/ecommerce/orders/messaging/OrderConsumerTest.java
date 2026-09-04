@@ -1,7 +1,12 @@
 package net.wowdev.ecommerce.orders.messaging;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
+import java.time.Instant;
+import java.util.UUID;
+import net.wowdev.ecommerce.domain.dto.OrderDTO;
+import net.wowdev.ecommerce.domain.events.InventoryUpdateFailedEvent;
 import net.wowdev.ecommerce.domain.events.OrderProcessingCompletedEvent;
 import net.wowdev.ecommerce.domain.events.OrderProcessingFailedEvent;
 import net.wowdev.ecommerce.orders.service.OrderService;
@@ -25,5 +30,22 @@ class OrderConsumerTest {
   @Test
   void handlesUnknownEvents() {
     consumer.handleUnknown(new Object());
+  }
+
+  @Test
+  void cancelsOrderWhenInventoryUpdateFails() {
+    final OrderDTO order = new OrderDTO();
+    final InventoryUpdateFailedEvent event =
+        new InventoryUpdateFailedEvent(
+            UUID.randomUUID(),
+            "transaction-1",
+            order,
+            "Insufficient stock",
+            Instant.parse("2026-01-01T00:00:00Z"),
+            "INVENTORY-SERVICE");
+
+    consumer.handleInventoryUpdateFailed(event);
+
+    verify(orderService).cancel(order, "Insufficient stock");
   }
 }

@@ -9,8 +9,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import net.wowdev.ecommerce.domain.dto.OrderDTO;
+import net.wowdev.ecommerce.domain.dto.OrderLineDTO;
 import net.wowdev.ecommerce.domain.entity.OrderEntity;
+import net.wowdev.ecommerce.domain.enums.OrderStatus;
 import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
 import net.wowdev.ecommerce.orders.TestFixtures;
 import net.wowdev.ecommerce.orders.messaging.OrderProducer;
 import net.wowdev.ecommerce.orders.repository.OrderRepository;
@@ -89,6 +92,40 @@ class DefaultOrderServiceTest {
     assertThat(result.getId()).isNotNull();
     assertThat(order.getId()).isEqualTo(result.getId());
     verify(orderProducer).publish(any(OrderCreatedEvent.class));
+    verify(orderProducer).publish(any(OrderProcessingStartedEvent.class));
+  }
+
+  @Test
+  void calculatesAmountsAndAssignsIdsToNewOrderLines() {
+    final OrderDTO order = TestFixtures.orderDto();
+    order.setId(null);
+    final OrderLineDTO line = new OrderLineDTO();
+    line.setQuantity(2);
+    line.setPrice(new java.math.BigDecimal("10.00"));
+    order.setOrderLines(List.of(line));
+    when(orderRepository.save(any(OrderEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    final OrderDTO result = service.create(order);
+
+    assertThat(result.getOrderAmount()).isEqualByComparingTo("20.00");
+    assertThat(result.getShippingAmount()).isEqualByComparingTo("12.90");
+    assertThat(result.getDiscountAmount()).isEqualByComparingTo("0");
+    assertThat(result.getTaxAmount()).isEqualByComparingTo("3.00");
+    assertThat(result.getTotalAmount()).isEqualByComparingTo("35.90");
+    assertThat(line.getId()).isNotNull();
+    assertThat(line.getOrderId()).isEqualTo(result.getId());
+    verify(orderProducer).publish(any(OrderCreatedEvent.class));
+    verify(orderProducer).publish(any(OrderProcessingStartedEvent.class));
+  }
+
+  @Test
+  void cancelsOrderAndPersistsCancelledStatus() {
+    final OrderDTO order = TestFixtures.orderDto();
+    service.cancel(order, "customer request");
+
+    assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
+    verify(orderRepository).save(any(OrderEntity.class));
   }
 
   @Test

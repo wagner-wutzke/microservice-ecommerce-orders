@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
@@ -91,14 +92,16 @@ public class KafkaConfig {
 
   @Bean
   public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
-      final ConsumerFactory<String, Object> orderConsumerFactory,
+      final ConsumerFactory<String, Object> consumerFactory,
       final KafkaTemplate<String, Object> kafkaTemplate) {
     final var factory = new ConcurrentKafkaListenerContainerFactory<String, Object>();
-    factory.setConsumerFactory(orderConsumerFactory);
+    factory.setConsumerFactory(consumerFactory);
     factory.setConcurrency(3);
-    factory.setCommonErrorHandler(
+    factory.getContainerProperties().setAckMode(AckMode.RECORD);
+    DefaultErrorHandler defaultErrorHandler =
         new DefaultErrorHandler(
-            new DeadLetterPublishingRecoverer(kafkaTemplate), new FixedBackOff(2000L, retries)));
+            new DeadLetterPublishingRecoverer(kafkaTemplate), new FixedBackOff(2000L, retries));
+    factory.setCommonErrorHandler(defaultErrorHandler);
     return factory;
   }
 }
