@@ -79,6 +79,7 @@ public class DefaultOrderService implements OrderService {
   }
 
   @Override
+  @Transactional
   public void cancel(OrderDTO orderDTO, String reason) {
     log.debug("Canceling order {} for the reason: {}", orderDTO.getId(), reason);
     orderDTO.setOrderStatus(OrderStatus.CANCELLED);

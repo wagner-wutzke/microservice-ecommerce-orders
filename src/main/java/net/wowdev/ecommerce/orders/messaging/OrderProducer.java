@@ -6,6 +6,8 @@ import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 @Slf4j
@@ -22,11 +24,13 @@ public class OrderProducer {
     this.ordersTopic = ordersTopic;
   }
 
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION)
   public void publish(final OrderCreatedEvent event) {
     log.debug(">> Publishing OrderCreatedEvent with event id: {}", event.eventId());
     template.send(ordersTopic, event.eventId().toString(), event);
   }
 
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION)
   public void publish(OrderProcessingStartedEvent event) {
     log.debug(">> Publishing OrderProcessingStartedEvent: {}", event.eventId());
     template.send(ordersTopic, event.transactionId(), event);

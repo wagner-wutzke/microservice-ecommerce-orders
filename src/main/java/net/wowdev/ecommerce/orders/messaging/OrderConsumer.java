@@ -23,7 +23,10 @@ public class OrderConsumer {
 
   @KafkaHandler
   public void handleOrderProcessingFailed(OrderProcessingFailedEvent event) {
-    log.debug(">>>> Processing OrderProcessingFailedEvent: {}", event.eventId());
+    log.debug(
+        ">>>> Processing OrderProcessingFailedEvent sent by {}. Event id: {}",
+        event.origin(),
+        event.eventId());
   }
 
   @KafkaHandler
