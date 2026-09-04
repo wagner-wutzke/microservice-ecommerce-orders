@@ -2,6 +2,7 @@ package net.wowdev.ecommerce.orders.messaging;
 
 import lombok.extern.slf4j.Slf4j;
 import net.wowdev.ecommerce.domain.events.OrderCreatedEvent;
+import net.wowdev.ecommerce.domain.events.OrderProcessingStartedEvent;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -24,9 +25,13 @@ public class OrderProducer {
     this.ordersTopic = ordersTopic;
   }
 
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void publish(final @NonNull OrderCreatedEvent event) {
-    log.debug(">>>> Sending OrderCreatedEvent: {}", event.eventId());
+  public void publish(final OrderCreatedEvent event) {
+    log.debug(">> Publishing OrderCreatedEvent with event id: {}", event.eventId());
     template.send(ordersTopic, event.eventId().toString(), event);
+  }
+
+  public void publish(OrderProcessingStartedEvent event) {
+    log.debug(">> Publishing OrderProcessingStartedEvent: {}", event.eventId());
+    template.send(ordersTopic, event.transactionId(), event);
   }
 }
